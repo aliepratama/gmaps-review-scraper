@@ -9,7 +9,7 @@ def scroll_reviews(driver: WebDriver, pause: float, max_iters: int) -> None:
         time.sleep(pause)
 
 def parse_reviews(driver: WebDriver, star_filter: list[int] | None = None) -> list[dict]:
-    cards = driver.find_elements(By.CSS_SELECTOR, 'div[jscontroller="H6eOGe"]')
+    cards = driver.find_elements(By.CSS_SELECTOR, 'div.m6QErb div.jftiEf')
     result = []
     desired = set(star_filter) if star_filter else None
 
