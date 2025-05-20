@@ -138,10 +138,12 @@ def extract_reviews_from_api(response_body: bytes) -> List[Dict[str, Any]]:
         print(f"Error extracting reviews from API: {str(e)}")
         return []
 
-def scrape_reviews_api(cfg: Settings) -> List[Dict[str, Any]]:
-    """Scrape reviews using the Google Maps API directly."""
+def scrape_reviews_api(cfg: Settings, save_callback=None):
+    """Scrape reviews using the Google Maps API directly with incremental saving."""
     driver = init_api_driver(cfg.headless)
     all_reviews = []
+    total_saved = 0
+    is_first_batch = True
     
     try:
         # Navigate to the place page and wait for it to load
@@ -281,67 +283,48 @@ def scrape_reviews_api(cfg: Settings) -> List[Dict[str, Any]]:
         print("Set request scope to specifically target review API endpoints")
         
         # Scroll to trigger more review loads
-        print(f"Starting to scroll with {cfg.scroll_iterations} iterations...")
-        for i in range(cfg.scroll_iterations):  # Use the configurable parameter
+        print(f"Scrolling the review container for {cfg.scroll_iterations} iterations...")
+        for i in range(cfg.scroll_iterations):
+            # Scroll the review container
             if review_container:
-                # Scroll within the container
                 driver.execute_script("""document.querySelector('div[jslog="26354;mutable:true;"]').scrollBy(0, 10000)""")
                 print(f"Scrolled review container (iteration {i+1}/{cfg.scroll_iterations})")
             else:
-                # Fallback to global scrolling
                 driver.execute_script("""window.scrollBy(0, 10000)""")
                 print(f"Scrolled window (iteration {i+1}/{cfg.scroll_iterations})")
             
-            # Wait longer between scrolls to allow requests to complete
+            # Wait for new reviews to load
             time.sleep(2)
-        
-        # Print the captured review API requests
-        print(f"Captured {len(driver.requests)} requests after filtering for review API endpoints")
-        # Process review API requests
-        for request in driver.requests:
-            if "listugcposts" in request.url and request.response:
-                print(f"Request URL: {request.url}")
-                response_body = request.response.body
-                if not response_body:
-                    continue
-                    
-                print(f"Processing review API response from: {request.url}")
-                
-                try:
-                    # Process the brotli-compressed response
-                    reviews = extract_reviews_from_api(response_body)
-                    print(f"Extracted {len(reviews)} reviews from response")
-                    all_reviews.extend(reviews)
-                except Exception as e:
-                    print(f"Error processing response: {str(e)}")
-                    continue
-        
-        if len(all_reviews) == 0:
-            print("WARNING: No reviews were captured. Broadening search...")
-            # If no reviews found with specific endpoint, try all requests
+            
+            # Process any new review API requests
+            new_reviews = []
             for request in driver.requests:
-                if request.response and "listugcposts" in request.url:
+                if "listugcposts" in request.url and request.response:
                     try:
-                        response_body = request.response.body
-                        if not response_body:
-                            continue
-                            
-                        print(f"Attempting to process: {request.url}")
-                        # Save raw response for debugging
-                        with open(f"raw_response.bin", "wb") as f:
-                            f.write(response_body)
-                            
-                        try:
-                            reviews = extract_reviews_from_api(response_body)
-                            if reviews:
-                                print(f"Found {len(reviews)} reviews!")
-                                all_reviews.extend(reviews)
-                        except Exception as e:
-                            print(f"Failed to extract reviews: {str(e)}")
+                        reviews = extract_reviews_from_api(request.response.body)
+                        if reviews:
+                            print(f"Extracted {len(reviews)} new reviews")
+                            new_reviews.extend(reviews)
                     except Exception as e:
-                        print(f"Error handling request: {str(e)}")
+                        print(f"Error processing response: {str(e)}")
+            
+            # Filter out reviews we've already processed
+            unique_new_reviews = [r for r in new_reviews if r not in all_reviews]
+            
+            # Add to our full collection
+            all_reviews.extend(unique_new_reviews)
+            
+            # Save this batch if we have a callback
+            if save_callback and unique_new_reviews:
+                saved = save_callback(unique_new_reviews, cfg, is_first_batch)
+                total_saved += saved
+                is_first_batch = False
+                print(f"Saved {saved} reviews (total: {total_saved})")
+            
+            # Clear processed requests to save memory
+            driver.requests.clear()
         
-        return all_reviews
+        return total_saved if save_callback else all_reviews
         
     finally:
         driver.quit()
