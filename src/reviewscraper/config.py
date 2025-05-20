@@ -8,6 +8,7 @@ class Settings(BaseModel):
     scroll_iterations: int = 15   # Number of times to scroll to load more reviews
     output_path: str = "out.json"
     headless: bool = True
+    output_format: str = "json"    # Added output_format parameter
 
     # If you still want URL validation but need a string output, you can use a validator:
     # from pydantic import validator

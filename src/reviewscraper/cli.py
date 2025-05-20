@@ -65,8 +65,16 @@ def save_reviews_batch(reviews, config, is_first_batch=False):
     """Save a batch of reviews to the output file."""
     if not reviews:
         return 0
-        
-    format = config.output_format.lower()
+    
+    # Get the format, defaulting to JSON if not specified
+    format = getattr(config, 'output_format', 'json').lower()
+    
+    # Determine format from file extension if output_format isn't available
+    if not hasattr(config, 'output_format') and config.output_path:
+        if config.output_path.lower().endswith('.csv'):
+            format = 'csv'
+        else:
+            format = 'json'
     
     if format == 'json':
         with open(config.output_path, 'a', encoding='utf-8') as f:
