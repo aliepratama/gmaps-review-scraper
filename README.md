@@ -4,8 +4,9 @@ A Python-based scraper for extracting Google Maps reviews from a specified place
 
 ## Features
 - Headless browser scraping (Chrome)
-- Configurable star-rating filter (1–5)
-- Scroll and load-more handling
+- Export data in JSON or CSV format
+- Sort reviews by date (newest or oldest first)
+- Configurable scroll iterations to control how many reviews to fetch
 - Environment-based configuration via `.env`
 - CLI interface with Click
 - Structured modular code for easy testing and extension
@@ -13,9 +14,9 @@ A Python-based scraper for extracting Google Maps reviews from a specified place
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/google-reviews-scraper.git
-   cd google-reviews-scraper
-````
+   git clone https://github.com/aliepratama/gmaps-review-scraper.git
+   cd gmaps-review-scraper
+   ```
 
 2. Install dependencies with Poetry:
 
@@ -34,8 +35,8 @@ A Python-based scraper for extracting Google Maps reviews from a specified place
 Run the CLI command:
 
 ```bash
-poetry run reviewscraper --url "https://www.google.com/maps/place/YourPlace" \
-  --stars 4,5 --output reviews.json --no-headless
+poetry run reviewscraper --url "https://maps.app.goo.gl/YourPlaceShortLink" \
+  --output reviews.json --no-headless
 ```
 
 Or load settings from `.env` and run:
